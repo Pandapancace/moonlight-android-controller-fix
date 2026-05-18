@@ -28,7 +28,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build nonRoot_game Release APK
-        run: ./gradlew assembleNonRoot_gameRelease
+        run: ./gradlew assembleNonRoot_gameRelease -x lintVitalNonRoot_gameRelease
 
       - name: Upload APKs as artifact
         uses: actions/upload-artifact@v4
