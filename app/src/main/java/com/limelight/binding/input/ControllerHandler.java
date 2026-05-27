@@ -502,11 +502,9 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
                     }
                 }
             }
-            else if (!devContext.hasJoystickAxes) {
-                // If this device doesn't have joystick axes, it may be an input device associated
-                // with another joystick (like a PS4 touchpad). We'll propagate that joystick's
-                // controller number to this associated device.
-
+            else {
+                // No joystick axes — may be an associated sub-device (e.g. DS4 touchpad).
+                // Propagate the controller number from the adjacent joystick device if found.
                 context.controllerNumber = 0;
 
                 // For the DS4 case, the associated joystick is the next device after the touchpad.
@@ -540,10 +538,6 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
                     LimeLog.info("Propagated controller number from "+associatedDeviceContext.name);
                 }
             }
-            else {
-                LimeLog.info("Not reserving a controller number");
-                context.controllerNumber = 0;
-            }
 
             // If the gamepad doesn't have motion sensors, use the on-device sensors as a fallback for player 1
             if (prefConfig.gamepadMotionSensorsFallbackToDevice && context.controllerNumber == 0 && devContext.sensorManager == null) {
@@ -551,27 +545,22 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
             }
         }
         else {
-            if (prefConfig.multiController) {
-                context.controllerNumber = 0;
+            // PATCH: Always reserve a slot for USB controllers too
+            context.controllerNumber = 0;
 
-                LimeLog.info("Reserving the next available controller number");
-                for (short i = 0; i < MAX_GAMEPADS; i++) {
-                    if ((currentControllers & (1 << i)) == 0) {
-                        // Found an unused controller value
-                        currentControllers |= (1 << i);
+            LimeLog.info("Reserving the next available controller number");
+            for (short i = 0; i < MAX_GAMEPADS; i++) {
+                if ((currentControllers & (1 << i)) == 0) {
+                    // Found an unused controller value
+                    currentControllers |= (1 << i);
 
-                        // Take this value out of the initial gamepad set
-                        initialControllers &= ~(1 << i);
+                    // Take this value out of the initial gamepad set
+                    initialControllers &= ~(1 << i);
 
-                        context.controllerNumber = i;
-                        context.reservedControllerNumber = true;
-                        break;
-                    }
+                    context.controllerNumber = i;
+                    context.reservedControllerNumber = true;
+                    break;
                 }
-            }
-            else {
-                LimeLog.info("Not reserving a controller number");
-                context.controllerNumber = 0;
             }
         }
 
@@ -1085,13 +1074,10 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
     }
 
     private short getActiveControllerMask() {
-        if (prefConfig.multiController) {
-            return (short)(currentControllers | initialControllers | (prefConfig.onscreenController ? 1 : 0));
-        }
-        else {
-            // Only Player 1 is active with multi-controller disabled
-            return 1;
-        }
+        // PATCH: Always return the full active controller mask regardless of the multiController
+        // preference. Without this, Apollo only sees Gamepad 0 even if we correctly assigned
+        // separate slots to multiple controllers.
+        return (short)(currentControllers | initialControllers | (prefConfig.onscreenController ? 1 : 0));
     }
 
     private static boolean areBatteryCapacitiesEqual(float first, float second) {
