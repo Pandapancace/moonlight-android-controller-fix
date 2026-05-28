@@ -288,6 +288,10 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
         deviceVibrator.cancel();
     }
 
+    public boolean hasController() {
+        return hasGameController || usbDeviceContexts.size() > 0;
+    }
+
     public void destroy() {
         if (!stopped) {
             stop();
@@ -2848,6 +2852,15 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
         context.inputMap = buttonFlags;
 
         sendControllerInputPacket(context);
+    }
+
+    @Override
+    public void reportControllerMotion(int controllerId, byte motionType, float x, float y, float z) {
+        GenericControllerContext context = usbDeviceContexts.get(controllerId);
+        if (context == null) {
+            return;
+        }
+        conn.sendControllerMotionEvent((byte)context.controllerNumber, motionType, x, y, z);
     }
 
     @Override
